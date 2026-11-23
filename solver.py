@@ -7,7 +7,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 BORE_RADIUS = 0.029
 LOAD_INNER_RADIUS = 0.029
 LOAD_OUTER_RADIUS = 0.036
@@ -168,28 +167,38 @@ class PlateSolution:
     def local(self, r):
         index = region_index(self.regions, r)
         start = index * BASIS_COUNT
-        return self.regions[index][2], self.coefficients[start:start + BASIS_COUNT]
+        return self.regions[index][2], self.coefficients[start : start + BASIS_COUNT]
 
     def deflection(self, r):
         pressure, local = self.local(r)
-        return float(basis(r) @ local) + particular_deflection(r, pressure, self.rigidity)
+        return float(basis(r) @ local) + particular_deflection(
+            r, pressure, self.rigidity
+        )
 
     def slope(self, r):
         pressure, local = self.local(r)
-        return float(basis_slope(r) @ local) + particular_slope(r, pressure, self.rigidity)
+        return float(basis_slope(r) @ local) + particular_slope(
+            r, pressure, self.rigidity
+        )
 
     def curvature(self, r):
         pressure, local = self.local(r)
-        return float(basis_curvature(r) @ local) + particular_curvature(r, pressure, self.rigidity)
+        return float(basis_curvature(r) @ local) + particular_curvature(
+            r, pressure, self.rigidity
+        )
 
     def radial_moment(self, r):
         pressure, local = self.local(r)
-        homogeneous = float(basis_radial_moment(r, self.rigidity, self.poisson_ratio) @ local)
+        homogeneous = float(
+            basis_radial_moment(r, self.rigidity, self.poisson_ratio) @ local
+        )
         return homogeneous + particular_radial_moment(r, pressure, self.poisson_ratio)
 
     def hoop_moment(self, r):
         pressure, local = self.local(r)
-        homogeneous = float(basis_hoop_moment(r, self.rigidity, self.poisson_ratio) @ local)
+        homogeneous = float(
+            basis_hoop_moment(r, self.rigidity, self.poisson_ratio) @ local
+        )
         return homogeneous + particular_hoop_moment(r, pressure, self.poisson_ratio)
 
     def radial_stress(self, r):
@@ -276,7 +285,10 @@ def assemble(regions, inner_edge, outer_edge, rigidity, poisson_ratio):
         matrix[row] = 0.0
         add(region, 1.0, basis_radial_moment(shared, rigidity, poisson_ratio))
         add(other, -1.0, basis_radial_moment(shared, rigidity, poisson_ratio))
-        right[row] = -(value(region, shared, "radial_moment") - value(other, shared, "radial_moment"))
+        right[row] = -(
+            value(region, shared, "radial_moment")
+            - value(other, shared, "radial_moment")
+        )
         row += 1
 
         matrix[row] = 0.0
@@ -340,13 +352,19 @@ def summary(solution, r_start, r_end, points=SAMPLE_POINTS):
     }
 
 
-def required_thickness(reference_stress, allowable_stress, reference_thickness=THICKNESS):
+def required_thickness(
+    reference_stress, allowable_stress, reference_thickness=THICKNESS
+):
     return reference_thickness * math.sqrt(reference_stress / allowable_stress)
 
 
-def optimise_for_safety_factor(total_force=ULTIMATE_THRUST, clamp_radius=FREE_OUTER_RADIUS):
+def optimise_for_safety_factor(
+    total_force=ULTIMATE_THRUST, clamp_radius=FREE_OUTER_RADIUS
+):
     reference = solve_layout(total_force, clamp_radius, thickness=THICKNESS)
-    reference_stress = summary(reference, BORE_RADIUS, clamp_radius)["peak_von_mises_stress"]
+    reference_stress = summary(reference, BORE_RADIUS, clamp_radius)[
+        "peak_von_mises_stress"
+    ]
     thickness = required_thickness(reference_stress, ALLOWABLE_STRESS)
     optimised = solve_layout(total_force, clamp_radius, thickness=thickness)
     result = summary(optimised, BORE_RADIUS, clamp_radius)
@@ -360,33 +378,31 @@ def optimise_for_safety_factor(total_force=ULTIMATE_THRUST, clamp_radius=FREE_OU
 
 def print_summary(clamp_radius=FREE_OUTER_RADIUS):
     print("Annular thrust plate, Al 6082-T6")
-    print("Bore {:.0f} mm, load band {:.0f}-{:.0f} mm, clamped {:.0f}-{:.0f} mm".format(
-        BORE_RADIUS * 1e3,
-        LOAD_INNER_RADIUS * 1e3,
-        LOAD_OUTER_RADIUS * 1e3,
-        clamp_radius * 1e3,
-        PLATE_OUTER_RADIUS * 1e3,
-    ))
-    print("Load area {:.1f} mm^2, pressure at {:.0f} N {:.1f} kPa".format(
-        load_area() * 1e6, PEAK_THRUST, uniform_pressure(PEAK_THRUST) / 1e3
-    ))
+    print(
+        f"Bore {BORE_RADIUS * 1e3:.0f} mm, load band {LOAD_INNER_RADIUS * 1e3:.0f}-{LOAD_OUTER_RADIUS * 1e3:.0f} mm, clamped {clamp_radius * 1e3:.0f}-{PLATE_OUTER_RADIUS * 1e3:.0f} mm"
+    )
+    print(
+        f"Load area {load_area() * 1e6:.1f} mm^2, pressure at {PEAK_THRUST:.0f} N {uniform_pressure(PEAK_THRUST) / 1e3:.1f} kPa"
+    )
     print()
     for force, label in [(PEAK_THRUST, "peak"), (ULTIMATE_THRUST, "ultimate")]:
         solution = solve_layout(force, clamp_radius)
         result = summary(solution, BORE_RADIUS, clamp_radius)
-        print("{:9s} {:7.0f} N  peak {:8.4f} MPa at r={:5.1f} mm  {:9.4f} um  SF {:6.2f}".format(
-            label,
-            force,
-            result["peak_von_mises_stress"] / 1e6,
-            result["peak_von_mises_radius"] * 1e3,
-            result["max_deflection"] * 1e6,
-            result["safety_factor"],
-        ))
+        print(
+            "{:9s} {:7.0f} N  peak {:8.4f} MPa at r={:5.1f} mm  {:9.4f} um  SF {:6.2f}".format(
+                label,
+                force,
+                result["peak_von_mises_stress"] / 1e6,
+                result["peak_von_mises_radius"] * 1e3,
+                result["max_deflection"] * 1e6,
+                result["safety_factor"],
+            )
+        )
     print()
     result = optimise_for_safety_factor()
-    print("Optimised for safety factor {:.2f} at {:.0f} N".format(
-        SAFETY_FACTOR_REQUIRED, ULTIMATE_THRUST
-    ))
+    print(
+        f"Optimised for safety factor {SAFETY_FACTOR_REQUIRED:.2f} at {ULTIMATE_THRUST:.0f} N"
+    )
     print("  thickness      {:8.4f} mm".format(result["thickness"] * 1e3))
     print("  peak stress    {:8.4f} MPa".format(result["peak_von_mises_stress"] / 1e6))
     print("  safety factor  {:8.4f}".format(result["safety_factor"]))
@@ -401,7 +417,9 @@ def plot(clamp_radius=FREE_OUTER_RADIUS, path="stress_profile.png"):
         solution, BORE_RADIUS, clamp_radius
     )
     optimised = optimise_for_safety_factor(clamp_radius=clamp_radius)
-    optimised_solution = solve_layout(ULTIMATE_THRUST, clamp_radius, thickness=optimised["thickness"])
+    optimised_solution = solve_layout(
+        ULTIMATE_THRUST, clamp_radius, thickness=optimised["thickness"]
+    )
     optimised_radii, _, _, optimised_von_mises, _ = sample(
         optimised_solution, BORE_RADIUS, clamp_radius
     )
@@ -412,30 +430,38 @@ def plot(clamp_radius=FREE_OUTER_RADIUS, path="stress_profile.png"):
     axes[0].plot(millimetres, radial_stress / 1e6, label="radial stress")
     axes[0].plot(millimetres, hoop_stress / 1e6, label="hoop stress")
     axes[0].plot(millimetres, von_mises / 1e6, label="von Mises", linestyle="--")
-    axes[0].axhline(YIELD_STRESS / 1e6, color="red", linestyle=":", label="yield 6082-T6")
-    axes[0].axvline(LOAD_OUTER_RADIUS * 1e3, color="grey", linestyle="-.", label="load band edge")
+    axes[0].axhline(
+        YIELD_STRESS / 1e6, color="red", linestyle=":", label="yield 6082-T6"
+    )
+    axes[0].axvline(
+        LOAD_OUTER_RADIUS * 1e3, color="grey", linestyle="-.", label="load band edge"
+    )
     axes[0].set_xlabel("radius, mm")
     axes[0].set_ylabel("bending stress, MPa")
-    axes[0].set_title("Stress at {:.0f} N, t = {:.2f} mm".format(PEAK_THRUST, THICKNESS * 1e3))
+    axes[0].set_title(f"Stress at {PEAK_THRUST:.0f} N, t = {THICKNESS * 1e3:.2f} mm")
     axes[0].grid(True, alpha=0.3)
     axes[0].legend(fontsize=8)
 
     axes[1].plot(millimetres, deflection * 1e6, color="black")
     axes[1].set_xlabel("radius, mm")
     axes[1].set_ylabel("deflection, um")
-    axes[1].set_title("Transverse deflection at {:.0f} N".format(PEAK_THRUST))
+    axes[1].set_title(f"Transverse deflection at {PEAK_THRUST:.0f} N")
     axes[1].grid(True, alpha=0.3)
 
-    axes[2].plot(radii * 1e3, von_mises / 1e6, label="{:.2f} mm as built".format(THICKNESS * 1e3))
+    axes[2].plot(
+        radii * 1e3, von_mises / 1e6, label=f"{THICKNESS * 1e3:.2f} mm as built"
+    )
     axes[2].plot(
         optimised_radii * 1e3,
         optimised_von_mises / 1e6,
         label="{:.2f} mm optimised".format(optimised["thickness"] * 1e3),
     )
-    axes[2].axhline(YIELD_STRESS / 1e6, color="red", linestyle=":", label="yield 6082-T6")
+    axes[2].axhline(
+        YIELD_STRESS / 1e6, color="red", linestyle=":", label="yield 6082-T6"
+    )
     axes[2].set_xlabel("radius, mm")
     axes[2].set_ylabel("von Mises stress, MPa")
-    axes[2].set_title("von Mises at the {:.0f} N ultimate load".format(ULTIMATE_THRUST))
+    axes[2].set_title(f"von Mises at the {ULTIMATE_THRUST:.0f} N ultimate load")
     axes[2].grid(True, alpha=0.3)
     axes[2].legend(fontsize=8)
 
