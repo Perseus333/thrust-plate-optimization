@@ -17,6 +17,7 @@ supported inner and outer edges are free.
 | Load annulus | radius 29 - 36 mm |
 | Free plate | radius 36 - 43 mm |
 | Clamped band | radius 43 - 55 mm |
+| Clamp radius used | 49 mm, middle of the clamped band |
 | Load area | 1429.4 mm^2 |
 | Peak thrust | 1261 N |
 | Design thrust, 2.5 safety | 3152 N |
@@ -51,42 +52,64 @@ Moments, shear and stresses follow in closed form:
 
 The domain is split at each load discontinuity, and regions are joined by continuity of
 w, w', M_r and Q. The four remaining boundary conditions are a free edge at the bore and
-a clamped edge at the outer band:
+a clamped edge at the clamp radius:
 
-    r = 29 mm (bore)  :  M_r = 0  and  Q = 0
-    r = 43 mm (clamp) :  w = 0    and  w' = 0
+    r = 29 mm (bore)   :  M_r = 0  and  Q = 0
+    r = 49 mm (clamp)  :  w = 0    and  w' = 0
 
 This gives a small dense linear system solved directly. No numerical differentiation is
 used: for the homogeneous basis, d/dr ( w'' + w'/r ) = 4 C4 / r.
 
-The green band is a finite-area restrained annulus (43 - 55 mm), not a point clamp. Both
-limiting idealisations are reported: a clamp at r = 43 mm (band start) and a clamp at
-r = 55 mm (outer rim). The truth lies between them.
+The green band is a finite-area restrained annulus (43 - 55 mm), not a point clamp. It is
+idealised as a single rigid clamp at its middle radius, r = 49 mm. Applying the clamp at
+the two band edges was checked and shown to bracket the answer, so the private case in
+which the plate is prevented from rotating at all under the band is central between them
+and a single result is reported.
 
 ## Results
 
 At the peak thrust of 1261 N, 6 mm plate:
 
-| Quantity | Clamp at 43 mm | Clamp at 55 mm |
-| :---- | :---- | :---- |
-| Peak von Mises stress | 7.17 MPa | 11.65 MPa |
-| Peak location | r = 43 mm | r = 55 mm |
-| Maximum deflection | 2.10 um | 13.41 um |
-| Safety factor against yield | 34.9 | 21.5 |
+| Quantity | Value |
+| :---- | :---- |
+| Peak von Mises stress | 9.78 MPa |
+| Peak location | r = 49 mm, the clamp |
+| Maximum deflection | 6.35 um |
+| Safety factor against yield | 25.6 |
 
 Optimised for a safety factor of 2.5 at the 3152 N design load:
 
-| Quantity | Clamp at 43 mm | Clamp at 55 mm |
-| :---- | :---- | :---- |
-| Required thickness | 2.540 mm | 3.239 mm |
-| Peak von Mises at 3152 N | 100.00 MPa | 100.00 MPa |
-| Achieved safety factor | 2.50 | 2.50 |
-| Deflection at 3152 N | 69.3 um | 213.2 um |
-| Plate mass | 47.05 g | 60.00 g |
-| Mass saving against 111.15 g | 57.7 % | 46.0 % |
+| Quantity | Value |
+| :---- | :---- |
+| Required thickness | 2.967 mm |
+| Peak von Mises at 3152 N | 100.00 MPa |
+| Achieved safety factor | 2.50 |
+| Deflection at 3152 N | 131.4 um |
+| Plate mass | 54.96 g |
+| Mass saving against 111.15 g | 50.6 % |
 
 Because peak bending stress scales as 1 / t^2 at fixed load, the required thickness
 follows in closed form without any search:
 
     t_required = t_reference * sqrt( sigma_reference / (yield / N) )
+
+## Secondary checks
+
+Neither transverse shear nor buckling governs.
+
+Transverse shear, at the 3152 N load: the free span over thickness is 2.2 at 6 mm and 4.4
+at 2.97 mm, low enough to ask whether thick-plate shear matters. It does not. The peak
+transverse shear force is 13.9 N/mm at the load edge, a mean shear stress of 7.05 MPa at
+the optimised thickness, which adds 0.7 % to the combined von Mises stress and 1.1 % to
+the deflection. The shear capacity at the optimised thickness is 63 kN, twenty times the
+load.
+
+Buckling, at the 3152 N load: the annulus critical pressure is 29.6 MPa against an applied
+2.21 MPa, a factor of 13.4, and the 7 mm free length is far too short to act as a column.
+The narrowest margin is the hoop compression under the load band, where the classical ring
+buckling force is 37.0 kN against the 15.4 kN carried, a factor of 2.4. The thin inner
+section is therefore not at risk of elastic instability, but its buckling margin is of the
+same order as its bending margin and should be revisited if the thickness is reduced
+further.
+
 
