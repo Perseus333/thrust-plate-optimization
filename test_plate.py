@@ -148,6 +148,32 @@ def test_more_points_does_not_change_peak_stress():
     assert fine == pytest.approx(coarse, rel=1e-3)
 
 
+def test_clamp_moment_matches_ring_of_force_statics():
+    solution = plate.solve(loads.peak_thrust_load())
+    centroid = 0.5 * (loads.EPOXY_BAND_INNER_RADIUS + loads.EPOXY_BAND_OUTER_RADIUS)
+    lever = centroid - geometry.BRACKET_RADIUS
+    estimate = loads.PEAK_THRUST * lever / (2.0 * math.pi * geometry.BRACKET_RADIUS)
+    assert solution.radial_moment(geometry.BRACKET_RADIUS) == pytest.approx(-estimate, rel=0.05)
+
+
+def test_deflection_is_small_compared_with_thickness():
+    solution = plate.solve(loads.peak_thrust_load())
+    assert abs(solution.deflection(geometry.OUTER_RADIUS)) < 0.01 * geometry.THICKNESS
+
+
+def test_moment_decays_from_clamp_to_free_edge():
+    solution = plate.solve(loads.peak_thrust_load())
+    assert abs(solution.radial_moment(geometry.BRACKET_RADIUS)) > abs(
+        solution.radial_moment(geometry.OUTER_RADIUS)
+    )
+
+
+def test_peak_stress_is_far_below_yield():
+    solution = plate.solve(loads.peak_thrust_load())
+    peak = plate.report(solution)["peak_von_mises_stress"]
+    assert peak < 0.1 * material.YIELD_STRESS
+
+
 def test_beam_baseline_disagrees_with_plate_by_large_factor():
     solution = plate.solve(loads.peak_thrust_load())
     plate_stress = plate.report(solution)["peak_von_mises_stress"]
