@@ -15,6 +15,7 @@ title: "Rocket Thrust-plate Analytical Optimisation",
   [Optimised the ring geometry to cut mass by [X]% ([Y] g to [Z] g) at a safety factor of [N] under a [thrust, N] load],
 """
 
+
 ## Tabulated data:
 
 Thrust plate characteristics:
