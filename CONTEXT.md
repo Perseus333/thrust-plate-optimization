@@ -40,11 +40,12 @@ which is now the single source of truth for the method and the numbers.
 - Awaiting ANSYS_RESULTS.txt to validate the physics before any result is accepted. The
   optimised thickness leaves a safety factor of 2.5, so there is much less margin for
   modelling error than the original 6 mm plate had.
-- The clamp is now modelled as a single rigid edge at the middle radius of the epoxy band,
-  r = 49 mm. The two rigid limits were equal at the bore and bracketed the answer at the
-  clamp, so the middle clamp is the central idealisation and every quantity is reported
-  once. A distributed elastic restraint would be the richer model, but it needs an assumed
-  epoxy stiffness and was not worth the extra machinery for a difference this small.
+- The clamp is modelled as a single rigid edge at the middle radius of the epoxy band,
+  r = 49 mm, which removed the ambiguity this item used to carry. If the epoxy band later
+  turns out to be soft, the richer alternative is to clamp the plate at r = 43 mm and add
+  a distributed elastic restraint over 43 - 55 mm; that needs an assumed epoxy stiffness.
+  The two-clamp bracket showed the modelling choice moves the answer by tens of percent,
+  so this stays the largest single uncertainty in the model.
 
 # Closing in this pass
 
