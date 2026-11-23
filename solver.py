@@ -135,7 +135,6 @@ def term_at(solution, r, kind):
 
 
 def field(solution, r, kind):
-    rigidity = solution["rigidity"]
     if kind == "radial_stress":
         return 6.0 * term_at(solution, r, "radial_moment") / solution["thickness"] ** 2
     if kind == "hoop_stress":
@@ -144,15 +143,6 @@ def field(solution, r, kind):
         radial = field(solution, r, "radial_stress")
         hoop = field(solution, r, "hoop_stress")
         return math.sqrt(radial**2 - radial * hoop + hoop**2)
-    if kind == "shear":
-        step = 1.0e-9
-        ahead = term_at(solution, r + step, "curvature") + term_at(
-            solution, r + step, "slope"
-        ) / (r + step)
-        behind = term_at(solution, r - step, "curvature") + term_at(
-            solution, r - step, "slope"
-        ) / (r - step)
-        return -rigidity * (ahead - behind) / (2.0 * step)
     return term_at(solution, r, kind)
 
 

@@ -206,11 +206,20 @@ def test_von_mises_matches_manual_combination():
 
 def test_shear_matches_closed_form_basis_derivative():
     solution = solver.solve(clamp_radius=0.043)
-    radius = 0.040
-    region = 0 if radius < solver.LOAD_OUTER_RADIUS else 1
-    c4 = solution["coefficients"][region * 4 + 3]
-    closed_form = -solution["rigidity"] * 4.0 * c4 / radius
-    assert solver.field(solution, radius, "shear") == pytest.approx(closed_form, rel=1e-5)
+    for radius in (0.032, 0.040):
+        region = 0 if radius < solver.LOAD_OUTER_RADIUS else 1
+        c4 = solution["coefficients"][region * 4 + 3]
+        pressure = solution["pressure"] if region == 0 else 0.0
+        expected = -solution["rigidity"] * 4.0 * c4 / radius + pressure * (-radius / 2.0)
+        assert solver.field(solution, radius, "shear") == pytest.approx(expected, rel=1e-12)
+
+
+def test_shear_is_zero_at_the_free_bore():
+    for clamp in (0.043, 0.055):
+        solution = solver.solve(clamp_radius=clamp)
+        assert solver.field(solution, solver.BORE_RADIUS, "shear") == pytest.approx(
+            0.0, abs=1e-9
+        )
 
 
 def test_zero_load_gives_zero_everything():
