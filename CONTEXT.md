@@ -47,13 +47,28 @@ which is now the single source of truth for the method and the numbers.
   The two-clamp bracket showed the modelling choice moves the answer by tens of percent,
   so this stays the largest single uncertainty in the model.
 
+# Verification performed
+
+- The solution basis, the moment, shear and stress formulas, the continuity conditions at
+  r = 36 mm and the boundary conditions at r = 29 mm and r = 49 mm were checked
+  independently: residuals of the linear system are at machine precision, the clamp line
+  reaction reproduces the applied load to twelve figures, and the clamped-edge hoop
+  moment is exactly the Poisson ratio times the radial moment.
+- The stress and deflection were reproduced by two independent routes, a from-scratch
+  assembly of the same analytical solution and a Rayleigh-Ritz energy minimisation with an
+  unrelated polynomial basis. They agree with the solver to 1e-13 and 0.12 percent
+  respectively.
+- Still outstanding: comparison against ANSYS once ANSYS_RESULTS.txt arrives. This has not
+  been done and no result should be treated as validated until it is.
+
 # Closing in this pass
 
 - Clamp ambiguity over 43 - 55 mm: replaced by the single middle-radius clamp above.
-- Transverse shear: checked at the ultimate load. The plate is moderately thick, the free
-  span over thickness is 2.17 at 6 mm and 4.38 at the optimised 2.97 mm, but the shear
-  share of the deflection falls as the plate thins and the peak shear stress is 7.05 MPa
-  against 100 MPa of bending stress. Transverse shear is not governing.
+- Transverse shear: checked at the ultimate load. The plate is moderately thick: the span
+  from the load edge to the clamp is 13 mm, 2.17 times the 6 mm thickness and 4.38 times
+  the optimised 2.97 mm, though the plain free band of 36 - 43 mm is only 7 mm wide. The
+  shear share of the deflection falls as the plate thins and the peak shear stress is
+  7.05 MPa against 100 MPa of bending stress. Transverse shear is not governing.
 - Buckling: checked at the ultimate load. The critical pressure of the annulus is 29.6 MPa
   against an applied 2.21 MPa, a factor of 13.4, and the thin section is far too short to
   act as a column. The narrowest margin is the hoop compression under the load band,
