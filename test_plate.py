@@ -7,6 +7,7 @@ import beam
 import geometry
 import loads
 import material
+import optimize
 import plate
 
 
@@ -195,3 +196,61 @@ def test_safety_factor_against_yield_for_peak_load():
     peak = plate.report(solution)["peak_von_mises_stress"]
     factor = material.YIELD_STRESS / peak
     assert factor > 1.0
+
+
+def test_optimiser_achieves_target_safety_factor():
+    result = optimize.thin()
+    assert result["safety_factor"] == pytest.approx(loads.SAFETY_FACTOR_ULTIMATE, rel=1e-6)
+
+
+def test_optimiser_thickness_is_thinner_than_baseline():
+    result = optimize.thin()
+    assert result["thickness"] < geometry.THICKNESS
+
+
+def test_optimiser_reduces_mass():
+    result = optimize.thin()
+    assert result["mass"] < result["baseline_mass"]
+    assert result["mass_saving_fraction"] > 0.0
+
+
+def test_optimiser_mass_ratio_equals_thickness_ratio():
+    result = optimize.thin()
+    assert result["mass"] / result["baseline_mass"] == pytest.approx(
+        result["thickness"] / geometry.THICKNESS, rel=1e-6
+    )
+
+
+def test_optimiser_thickness_scales_with_square_root_of_safety_factor():
+    loose = optimize.uniform_solution(2.0)
+    tight = optimize.uniform_solution(8.0)
+    assert tight["thickness"] == pytest.approx(loose["thickness"] * 2.0, rel=1e-6)
+
+
+def test_optimiser_thickness_increases_with_safety_factor():
+    thicknesses = [optimize.uniform_solution(sf)["thickness"] for sf in [2.0, 4.0, 8.0]]
+    assert thicknesses == sorted(thicknesses)
+
+
+def test_optimised_plate_stays_within_small_deflection_theory():
+    result = optimize.thin()
+    assert abs(result["deflection"]) < 0.05 * result["thickness"]
+
+
+def test_optimised_plate_equilibrium_still_holds():
+    result = optimize.thin()
+    solution = plate.solve(loads.ultimate_thrust_load(), thickness=result["thickness"])
+    step = 1.0e-9
+    radius = geometry.BRACKET_RADIUS + 1.0e-8
+
+    def shear(r):
+        combined = lambda x: solution.curvature(x) + solution.slope(x) / x
+        return -solution.rigidity * (combined(r + step) - combined(r - step)) / (2.0 * step)
+
+    reaction = 2.0 * math.pi * geometry.BRACKET_RADIUS * shear(radius)
+    assert reaction == pytest.approx(loads.ULTIMATE_THRUST, rel=1e-5)
+
+
+def test_optimiser_against_yield_uses_ultimate_load():
+    result = optimize.thin()
+    assert result["force"] == pytest.approx(loads.ULTIMATE_THRUST)

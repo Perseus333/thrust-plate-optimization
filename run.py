@@ -9,6 +9,7 @@ import beam
 import geometry
 import loads
 import material
+import optimize
 import plate
 
 
@@ -78,12 +79,64 @@ def plot(radii, radial_stress, hoop_stress, von_mises, deflection, path):
     plt.close(figure)
 
 
+def plot_optimisation(path):
+    original = plate.solve(loads.ultimate_thrust_load(), thickness=geometry.THICKNESS)
+    result = optimize.thin()
+    optimised = plate.solve(loads.ultimate_thrust_load(), thickness=result["thickness"])
+
+    original_radii, original_radial, original_hoop, original_vm, _ = plate.sample(original)
+    optimised_radii, optimised_radial, optimised_hoop, optimised_vm, _ = plate.sample(optimised)
+
+    figure, axes = plt.subplots(2, 1, figsize=(7.0, 8.0))
+    axes[0].plot(original_radii * 1e3, original_vm / 1e6, label="6.00 mm, as built")
+    axes[0].plot(
+        optimised_radii * 1e3,
+        optimised_vm / 1e6,
+        label="{:0.2f} mm, optimised".format(result["thickness"] * 1e3),
+    )
+    axes[0].axhline(
+        material.YIELD_STRESS / 1e6,
+        color="red",
+        linestyle=":",
+        label="yield 6082-T6",
+    )
+    axes[0].set_xlabel("radius, mm")
+    axes[0].set_ylabel("von Mises stress, MPa")
+    axes[0].set_title("Von Mises stress at the 3152 N ultimate load")
+    axes[0].grid(True, alpha=0.3)
+    axes[0].legend(fontsize=8)
+
+    masses = [result["baseline_mass"] * 1e3, result["mass"] * 1e3]
+    axes[1].barh(
+        ["6.00 mm", "{:0.2f} mm".format(result["thickness"] * 1e3)],
+        masses,
+        color=["tab:grey", "tab:green"],
+        height=0.5,
+    )
+    axes[1].set_xlabel("plate mass, g")
+    axes[1].set_title("Mass, {:.1f} percent saved".format(result["mass_saving_fraction"] * 100.0))
+    axes[1].grid(True, axis="x", alpha=0.3)
+    for index, value in enumerate(masses):
+        axes[1].text(value + 2.0, index, "{:0.1f} g".format(value), va="center", fontsize=9)
+    axes[1].set_xlim(0.0, result["baseline_mass"] * 1e3 * 1.3)
+
+    figure.tight_layout()
+    figure.savefig(path, dpi=150)
+    plt.close(figure)
+
+
 def main():
     solution, summary, radii, radial_stress, hoop_stress, von_mises, deflection = build_summary()
     print_summary(summary)
     plot(radii, radial_stress, hoop_stress, von_mises, deflection, "stress_profile.png")
     print()
     print("wrote stress_profile.png")
+    print()
+    print("=" * 64)
+    print(optimize.report(optimize.thin()))
+    plot_optimisation("optimisation.png")
+    print()
+    print("wrote optimisation.png")
 
 
 if __name__ == "__main__":
