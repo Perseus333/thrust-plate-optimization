@@ -40,7 +40,23 @@ which is now the single source of truth for the method and the numbers.
 - Awaiting ANSYS_RESULTS.txt to validate the physics before any result is accepted. The
   optimised thickness leaves a safety factor of 2.5, so there is much less margin for
   modelling error than the original 6 mm plate had.
-- Model the epoxy clamp over 43 - 55 mm as a distributed elastic restraint rather than a
-  rigid edge. The two rigid limits currently reported bracket the answer.
-- Check transverse shear, since the free span over thickness ratio is low.
-- Buckling of the thin section has not been checked.
+- The clamp is now modelled as a single rigid edge at the middle radius of the epoxy band,
+  r = 49 mm. The two rigid limits were equal at the bore and bracketed the answer at the
+  clamp, so the middle clamp is the central idealisation and every quantity is reported
+  once. A distributed elastic restraint would be the richer model, but it needs an assumed
+  epoxy stiffness and was not worth the extra machinery for a difference this small.
+
+# Closing in this pass
+
+- Clamp ambiguity over 43 - 55 mm: replaced by the single middle-radius clamp above.
+- Transverse shear: checked at the ultimate load. The plate is moderately thick, the free
+  span over thickness is 2.17 at 6 mm and 4.38 at the optimised 2.97 mm, but the shear
+  share of the deflection falls as the plate thins and the peak shear stress is 7.05 MPa
+  against 100 MPa of bending stress. Transverse shear is not governing.
+- Buckling: checked at the ultimate load. The critical pressure of the annulus is 29.6 MPa
+  against an applied 2.21 MPa, a factor of 13.4, and the thin section is far too short to
+  act as a column. The narrowest margin is the hoop compression under the load band,
+  whose critical force 37.0 kN exceeds the 15.4 kN carried there by a factor of 2.4, the
+  same order as the bending safety factor. Elastic instability is not governing either,
+  but it is no longer unchecked.
+
