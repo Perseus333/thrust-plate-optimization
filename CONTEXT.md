@@ -164,6 +164,128 @@ independent analytical checks. All 27 tests in `test_plate.py` pass.
 - The bracket is treated as rigid. Real compliance would reduce the clamp moment.
 - Body forces and plate self-weight are neglected, as agreed with the supervisor.
 
+# Optimisation findings
+
+## Target
+
+The 2.5 safety factor is applied to the peak thrust, giving an ultimate load of
+3152 N, and the plate must reach a safety factor of 2.5 against yield at that
+load. The allowable peak stress is therefore
+
+    250 MPa / 2.5 = 100 MPa
+
+## Scaling law
+
+The peak bending stress of a plate is proportional to the bending moment divided
+by the square of the thickness, so at fixed load
+
+    sigma ~ 1 / t^2
+
+and therefore, for a required safety factor N,
+
+    t ~ sqrt(N)
+
+The required thickness follows directly without any search:
+
+    t_required = t_reference * sqrt(sigma_reference / (yield / N))
+
+Using the 6 mm plate, whose peak stress at 3152 N is 15.474 MPa, gives
+
+    t_required = 6 * sqrt(15.474 / 100) = 2.3602 mm
+
+This closed form is verified to a safety factor of 2.5000000 against the solver.
+
+## Result
+
+| Quantity | 6 mm as built | 2.36 mm optimised |
+| :---- | :---- | :---- |
+| Thickness | 6.000 mm | 2.360 mm |
+| Peak von Mises at 3152 N | 15.47 MPa | 100.00 MPa |
+| Safety factor at 3152 N | 16.16 | 2.50 |
+| Peak von Mises at 1261 N | 6.19 MPa | 40.00 MPa |
+| Safety factor at 1261 N | 40.39 | 6.25 |
+| Maximum deflection at 3152 N | 5.25 um | 86.30 um |
+| Annulus mass | 111.152 g | 43.724 g |
+
+    mass saved = 67.428 g
+    mass saving = 60.66 percent
+
+The mass figures are the mass of the annular plate alone, from the outer diameter
+of 110 mm, the inner diameter of 58 mm and the quoted thickness. The 441.3 g
+weight originally listed for the part is not consistent with a flat 26 mm wide
+6 mm thick aluminium annulus, which weighs 111.2 g, and was removed from the
+tables by the user. It is therefore not used as the optimisation baseline, and
+the saving quoted above is relative to the 6 mm flat plate.
+
+## Validity of the optimised design
+
+Making the plate thinner pushes the thin plate assumptions harder, so the
+dimensionless ratios are rechecked at 2.360 mm.
+
+| Ratio | 6 mm | 2.360 mm | Requirement |
+| :---- | :---- | :---- | :---- |
+| Deflection over thickness | 0.00088 | 0.0366 | much less than 1 |
+| Overhang over thickness | 3.33 | 8.47 | greater than about 5 |
+| Outer radius over thickness | 9.17 | 23.30 | greater than about 5 |
+
+Both directional ratios improve, because a thinner plate is relatively wider.
+The deflection ratio rises from 0.09 percent to 3.7 percent of the thickness but
+remains far inside the small deflection regime, so the linear Kirchhoff model
+remains valid. The matrix conditioning also improves, falling from 2.4e6 at 6 mm
+to 1.4e5, so there is no numerical penalty.
+
+The design is therefore valid under the current model, though it now has much
+less margin against any effect the model omits. Transverse shear deformation,
+a non-uniform epoxy bond stress, and bracket compliance would each reduce the
+available margin, and at a safety factor of 2.5 there is far less room for them
+than at 16. This is the main risk in accepting the 2.36 mm result before ANSYS
+validation.
+
+## Stress distribution and the case for a taper
+
+At 2.360 mm and 3152 N the stress is strongly non-uniform across the width.
+
+| Radius, mm | von Mises, MPa | Fraction of peak |
+| :---- | :---- | :---- |
+| 35.0 | 100.00 | 100.0 percent |
+| 38.0 | 59.06 | 59.1 percent |
+| 40.0 | 39.04 | 39.0 percent |
+| 42.0 | 24.16 | 24.2 percent |
+| 45.0 | 11.34 | 11.3 percent |
+| 48.0 | 8.85 | 8.8 percent |
+| 50.0 | 8.60 | 8.6 percent |
+| 55.0 | 7.41 | 7.4 percent |
+
+Only the material near the clamp is working hard. A uniform plate is therefore
+wasteful, and a plate tapered in thickness would save considerably more mass.
+Scaling the local thickness as 1 / sqrt(sigma) gives a required profile falling
+from 2.360 mm at the clamp to 0.642 mm at the free edge, which would reduce the
+mass of the 35 to 55 mm region from 36.0 g to about 15.8 g, a further 56 percent
+of that region.
+
+Over the whole plate the saving is smaller, because the region from 29 to 35 mm
+lies under the bracket and must stay at the full 2.360 mm to carry the clamp
+bearing. Including that 7.7 g, the tapered plate would weigh about 23.5 g against
+43.7 g for the uniform plate, a further 46 percent.
+
+That estimate is indicative only, because the solver currently assumes a constant
+flexural rigidity, so it cannot yet model a taper. It is also optimistic: at
+0.64 mm the local deflection reaches about 6.8 times the local thickness, which
+breaks the small deflection assumption and would require a large deflection
+analysis with membrane stiffening. A real tapered design would therefore land
+somewhere between 23.5 g and 43.7 g, and needs the solver extended to variable
+thickness before the figure can be trusted.
+
+## Limitations of this optimisation
+
+- Only the uniform thickness is optimised. The radii, the load band and the
+  bracket diameter are unchanged.
+- Only through thickness stress is considered. Deflection is not constrained, and
+  at 86 um it is large in relative terms even though it is structurally harmless.
+- Buckling of the thin section under thrust is not checked. With a 20 mm span and
+  a 2.36 mm thickness this is not expected to govern, but it has not been verified.
+- The cable hole stress concentration is not included.
+
 # Book references
 
 The book, Martin H. S. *Elasticity*, is in the root directory. It is very long,
@@ -271,8 +393,13 @@ text, and the relevant overlap is limited to the following.
 
 # Open items
 
-- Awaiting ANSYS_RESULTS.txt to validate the physics.
+- Awaiting ANSYS_RESULTS.txt to validate the physics before the 2.360 mm result is
+  accepted. At a safety factor of 2.5 there is much less margin for any modelling
+  error than the original 6 mm plate had.
 - Decide whether to apply a stress concentration factor for the 8 mm cable hole.
-- Optimisation of the ring geometry is not started. At a safety factor of 40 the
-  current 6 mm plate is substantially over-designed, so there is significant mass
-  to remove.
+- Uniform thickness optimisation is complete. Extending the solver to variable
+  thickness would allow a taper, estimated to save a further 56 percent, but
+  requires a large deflection analysis at the thin outer edge.
+- Confirm whether the 2.36 mm plate is manufacturable, and whether the bracket
+  and epoxy interfaces assume a minimum bearing thickness.
+- Buckling of the thin section has not been checked.

@@ -144,7 +144,46 @@ solver value 42.08 N.m/m.
 - Body forces and the plate self-weight are neglected, as agreed with the
   project supervisor.
 
-## Files
+## Optimisation
+
+The plate must reach a safety factor of 2.5 against yield at the 2.5x ultimate
+thrust of 3152 N, so the allowable peak stress is 250 / 2.5 = 100 MPa.
+
+Because the peak bending stress of a plate scales as 1 / t^2, the required
+thickness follows in closed form, without any search:
+
+    t_required = t_reference * sqrt(sigma_reference / (yield / N))
+
+Using the 6 mm plate, whose peak stress at 3152 N is 15.474 MPa:
+
+    t_required = 6 * sqrt(15.474 / 100) = 2.3602 mm
+
+| Quantity | 6 mm as built | 2.360 mm optimised |
+| :---- | :---- | :---- |
+| Peak von Mises at 3152 N | 15.47 MPa | 100.00 MPa |
+| Safety factor at 3152 N | 16.16 | 2.50 |
+| Peak von Mises at 1261 N | 6.19 MPa | 40.00 MPa |
+| Safety factor at 1261 N | 40.39 | 6.25 |
+| Maximum deflection at 3152 N | 5.25 um | 86.30 um |
+| Annulus mass | 111.152 g | 43.724 g |
+
+Mass saved is 67.428 g, or 60.66 percent. This is the mass of the flat annulus
+alone, from the 110 mm outer diameter, 58 mm inner diameter and the stated
+thickness. The 441.3 g weight originally tabulated for the part is not consistent
+with such an annulus, which weighs 111.2 g at 6 mm, so it is not used as the
+baseline.
+
+The thinner plate is still a valid thin plate. Deflection falls from 0.09 percent
+to 3.7 percent of the thickness, which remains far inside the small deflection
+regime, and both overhang over thickness and radius over thickness improve. The
+matrix conditioning also improves, from 2.4e6 to 1.4e5.
+
+Stress at the optimised thickness is concentrated near the clamp and decays to
+7.4 percent of peak at the free edge, so a tapered plate would save more. A
+thickness profile scaled as 1 / sqrt(sigma) would take the plate to about 23.5 g,
+a further 46 percent, but this needs the solver extended to variable thickness and
+a large deflection analysis at the thin outer edge before it can be trusted.
+
 
 | File | Purpose |
 | :---- | :---- |
@@ -152,8 +191,9 @@ solver value 42.08 N.m/m.
 | `geometry.py` | Radii, areas and section properties |
 | `material.py` | Al 6082-T6 properties |
 | `loads.py` | Thrust values and the epoxy band load case |
+| `optimize.py` | Thickness optimiser |
 | `beam.py` | Clamped-strip comparison baseline |
-| `run.py` | Prints the summary and writes the stress plot |
+| `run.py` | Prints the summary and writes the stress and mass plots |
 | `test_plate.py` | Test suite |
 
 ## Running
