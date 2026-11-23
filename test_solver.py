@@ -57,12 +57,38 @@ def test_load_band_inside_plate():
 
 
 def test_load_area_value():
-    assert solver.load_area() == pytest.approx(1429.42e-6, rel=1e-4)
+    assert solver.LOAD_AREA == pytest.approx(1429.42e-6, rel=1e-4)
+
+
+def test_load_area_matches_the_two_band_radii():
+    expected = math.pi * (
+        solver.LOAD_OUTER_RADIUS**2 - solver.LOAD_INNER_RADIUS**2
+    )
+    assert solver.LOAD_AREA == pytest.approx(expected)
+
+
+def test_plate_area_matches_the_two_plate_radii():
+    expected = math.pi * (
+        solver.PLATE_OUTER_RADIUS**2 - solver.PLATE_INNER_RADIUS**2
+    )
+    assert solver.PLATE_AREA == pytest.approx(expected)
 
 
 def test_uniform_pressure_reproduces_total_force():
     pressure = solver.uniform_pressure(solver.PEAK_THRUST)
-    assert pressure * solver.load_area() == pytest.approx(solver.PEAK_THRUST)
+    assert pressure * solver.LOAD_AREA == pytest.approx(solver.PEAK_THRUST)
+
+
+def test_peak_load_pressure_matches_peak_thrust():
+    assert solver.LOAD_PRESSURE == pytest.approx(
+        solver.uniform_pressure(solver.PEAK_THRUST)
+    )
+
+
+def test_plate_mass_matches_area_times_thickness_times_density():
+    assert solver.plate_mass(solver.THICKNESS) == pytest.approx(
+        solver.DENSITY * solver.PLATE_AREA * solver.THICKNESS
+    )
 
 
 def test_ultimate_thrust_is_safety_factor_times_peak():

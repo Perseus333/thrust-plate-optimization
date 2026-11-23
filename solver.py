@@ -35,29 +35,21 @@ ALLOWABLE_STRESS = YIELD_STRESS / SAFETY_FACTOR_REQUIRED
 BASIS_COUNT = 4
 SAMPLE_POINTS = 401
 
+PLATE_AREA = math.pi * (PLATE_OUTER_RADIUS**2 - PLATE_INNER_RADIUS**2)
+LOAD_AREA = math.pi * (LOAD_OUTER_RADIUS**2 - LOAD_INNER_RADIUS**2)
+LOAD_PRESSURE = PEAK_THRUST / LOAD_AREA
+
 
 def flexural_rigidity(thickness):
     return YOUNGS_MODULUS * thickness**3 / (12.0 * (1.0 - POISSON_RATIO**2))
 
 
-def annulus_area(r_inner, r_outer):
-    return math.pi * (r_outer**2 - r_inner**2)
-
-
-def plate_volume(thickness):
-    return annulus_area(PLATE_INNER_RADIUS, PLATE_OUTER_RADIUS) * thickness
-
-
 def plate_mass(thickness):
-    return DENSITY * plate_volume(thickness)
-
-
-def load_area():
-    return annulus_area(LOAD_INNER_RADIUS, LOAD_OUTER_RADIUS)
+    return DENSITY * PLATE_AREA * thickness
 
 
 def uniform_pressure(total_force):
-    return total_force / load_area()
+    return total_force / LOAD_AREA
 
 
 def load_bands(total_force):
@@ -77,7 +69,7 @@ def basis_curvature(r):
 
 
 def basis_shear(r, rigidity):
-    return (-rigidity) * np.array([0.0, 0.0, 0.0, 4.0 / r])
+    return (-4.0 * rigidity / r) * np.array([0.0, 0.0, 0.0, 1.0])
 
 
 def basis_radial_moment(r, rigidity, poisson_ratio):
@@ -86,37 +78,6 @@ def basis_radial_moment(r, rigidity, poisson_ratio):
 
 def basis_hoop_moment(r, rigidity, poisson_ratio):
     return (-rigidity) * (basis_slope(r) / r + poisson_ratio * basis_curvature(r))
-
-
-def particular_deflection(r, pressure, rigidity):
-    return pressure * r**4 / (64.0 * rigidity)
-
-
-def particular_slope(r, pressure, rigidity):
-    return pressure * r**3 / (16.0 * rigidity)
-
-
-def particular_curvature(r, pressure, rigidity):
-    return 3.0 * pressure * r**2 / (16.0 * rigidity)
-
-
-def particular_shear(r, pressure):
-    return -pressure * r / 2.0
-
-
-def particular_radial_moment(r, pressure, poisson_ratio):
-    return -(3.0 + poisson_ratio) * pressure * r**2 / 16.0
-
-
-def particular_hoop_moment(r, pressure, poisson_ratio):
-    return -(1.0 + 3.0 * poisson_ratio) * pressure * r**2 / 16.0
-
-
-def pressure_at(bands, r):
-    for r_inner, r_outer, pressure in bands:
-        if r_inner <= r <= r_outer:
-            return pressure
-    return 0.0
 
 
 def collect_cuts(bands, r_inner, r_outer):
@@ -136,7 +97,11 @@ def build_regions(bands, r_inner, r_outer):
         r_start = edges[index]
         r_end = edges[index + 1]
         midpoint = 0.5 * (r_start + r_end)
-        regions.append((r_start, r_end, pressure_at(bands, midpoint)))
+        pressure = 0.0
+        for band_inner, band_outer, band_pressure in bands:
+            if band_inner <= midpoint <= band_outer:
+                pressure = band_pressure
+        regions.append((r_start, r_end, pressure))
     return regions
 
 
@@ -172,35 +137,32 @@ class PlateSolution:
 
     def deflection(self, r):
         pressure, local = self.local(r)
-        return float(basis(r) @ local) + particular_deflection(
-            r, pressure, self.rigidity
-        )
+        return float(basis(r) @ local) + pressure * r**4 / (64.0 * self.rigidity)
 
     def slope(self, r):
         pressure, local = self.local(r)
-        return float(basis_slope(r) @ local) + particular_slope(
-            r, pressure, self.rigidity
-        )
+        return float(basis_slope(r) @ local) + pressure * r**3 / (16.0 * self.rigidity)
 
     def curvature(self, r):
         pressure, local = self.local(r)
-        return float(basis_curvature(r) @ local) + particular_curvature(
-            r, pressure, self.rigidity
-        )
+        polynomial = 3.0 * pressure * r**2 / (16.0 * self.rigidity)
+        return float(basis_curvature(r) @ local) + polynomial
 
     def radial_moment(self, r):
         pressure, local = self.local(r)
         homogeneous = float(
             basis_radial_moment(r, self.rigidity, self.poisson_ratio) @ local
         )
-        return homogeneous + particular_radial_moment(r, pressure, self.poisson_ratio)
+        polynomial = -(3.0 + self.poisson_ratio) * pressure * r**2 / 16.0
+        return homogeneous + polynomial
 
     def hoop_moment(self, r):
         pressure, local = self.local(r)
         homogeneous = float(
             basis_hoop_moment(r, self.rigidity, self.poisson_ratio) @ local
         )
-        return homogeneous + particular_hoop_moment(r, pressure, self.poisson_ratio)
+        polynomial = -(1.0 + 3.0 * self.poisson_ratio) * pressure * r**2 / 16.0
+        return homogeneous + polynomial
 
     def radial_stress(self, r):
         return 6.0 * self.radial_moment(r) / self.thickness**2
@@ -235,13 +197,13 @@ def assemble(regions, inner_edge, outer_edge, rigidity, poisson_ratio):
     def value(region, r, kind):
         pressure = regions[region][2]
         if kind == "w":
-            return particular_deflection(r, pressure, rigidity)
+            return pressure * r**4 / (64.0 * rigidity)
         if kind == "slope":
-            return particular_slope(r, pressure, rigidity)
+            return pressure * r**3 / (16.0 * rigidity)
         if kind == "shear":
-            return particular_shear(r, pressure)
+            return -pressure * r / 2.0
         if kind == "radial_moment":
-            return particular_radial_moment(r, pressure, poisson_ratio)
+            return -(3.0 + poisson_ratio) * pressure * r**2 / 16.0
         raise ValueError("unknown particular solution")
 
     def add_edge_condition(region, r, condition):
@@ -353,19 +315,13 @@ def summary(solution, r_start, r_end, points=SAMPLE_POINTS):
     }
 
 
-def required_thickness(
-    reference_stress, allowable_stress, reference_thickness=THICKNESS
-):
+def required_thickness(reference_stress, allowable_stress, reference_thickness=THICKNESS):
     return reference_thickness * math.sqrt(reference_stress / allowable_stress)
 
 
-def optimise_for_safety_factor(
-    total_force=ULTIMATE_THRUST, clamp_radius=CLAMP_RADIUS
-):
+def optimise_for_safety_factor(total_force=ULTIMATE_THRUST, clamp_radius=CLAMP_RADIUS):
     reference = solve_layout(total_force, clamp_radius, thickness=THICKNESS)
-    reference_stress = summary(reference, BORE_RADIUS, clamp_radius)[
-        "peak_von_mises_stress"
-    ]
+    reference_stress = summary(reference, BORE_RADIUS, clamp_radius)["peak_von_mises_stress"]
     thickness = required_thickness(reference_stress, ALLOWABLE_STRESS)
     optimised = solve_layout(total_force, clamp_radius, thickness=thickness)
     result = summary(optimised, BORE_RADIUS, clamp_radius)
@@ -383,7 +339,7 @@ def print_summary(clamp_radius=CLAMP_RADIUS):
         f"Bore {BORE_RADIUS * 1e3:.0f} mm, load band {LOAD_INNER_RADIUS * 1e3:.0f}-{LOAD_OUTER_RADIUS * 1e3:.0f} mm, clamped {clamp_radius * 1e3:.0f}-{PLATE_OUTER_RADIUS * 1e3:.0f} mm"
     )
     print(
-        f"Load area {load_area() * 1e6:.1f} mm^2, pressure at {PEAK_THRUST:.0f} N {uniform_pressure(PEAK_THRUST) / 1e3:.1f} kPa"
+        f"Load area {LOAD_AREA * 1e6:.1f} mm^2, pressure at {PEAK_THRUST:.0f} N {LOAD_PRESSURE / 1e3:.1f} kPa"
     )
     print()
     for force, label in [(PEAK_THRUST, "peak"), (ULTIMATE_THRUST, "ultimate")]:
