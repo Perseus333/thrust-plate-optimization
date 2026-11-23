@@ -20,12 +20,11 @@ from model import (
     PLATE_OUTER_RADIUS,
     SAFETY_FACTOR_REQUIRED,
     THICKNESS,
-    ULTIMATE_THRUST,
     YIELD_STRESS,
 )
 
 
-def optimise(total_force=ULTIMATE_THRUST, clamp_radius=CLAMP_RADIUS):
+def optimise(total_force=PEAK_THRUST, clamp_radius=CLAMP_RADIUS):
     reference = solver.peak(
         solver.solve(clamp_radius=clamp_radius, total_force=total_force), "von_mises"
     )[1]
@@ -59,24 +58,22 @@ def report():
         f"Load area {LOAD_AREA * 1e6:.1f} mm^2, pressure at {PEAK_THRUST:.0f} N {PEAK_THRUST / LOAD_AREA / 1e3:.1f} kPa"
     )
     print()
-    for force, label in [(PEAK_THRUST, "peak"), (ULTIMATE_THRUST, "ultimate")]:
-        solution = solver.solve(total_force=force)
-        radius, stress = solver.peak(solution, "von_mises")
-        _, deflection = solver.peak(solution, "deflection")
-        print(
-            "{:9s} {:7.0f} N  peak {:8.4f} MPa at r={:5.1f} mm  {:9.4f} um  SF {:6.2f}".format(
-                label,
-                force,
-                stress / 1e6,
-                radius * 1e3,
-                deflection * 1e6,
-                YIELD_STRESS / stress,
-            )
+    solution = solver.solve(total_force=PEAK_THRUST)
+    radius, stress = solver.peak(solution, "von_mises")
+    _, deflection = solver.peak(solution, "deflection")
+    print(
+        "{:7.0f} N  peak {:8.4f} MPa at r={:5.1f} mm  {:9.4f} um  SF {:6.2f}".format(
+            PEAK_THRUST,
+            stress / 1e6,
+            radius * 1e3,
+            deflection * 1e6,
+            YIELD_STRESS / stress,
         )
+    )
     print()
     result = optimise()
     print(
-        f"Optimised for safety factor {SAFETY_FACTOR_REQUIRED:.2f} at {ULTIMATE_THRUST:.0f} N"
+        f"Optimised for safety factor {SAFETY_FACTOR_REQUIRED:.2f} at {PEAK_THRUST:.0f} N"
     )
     print("  thickness      {:8.4f} mm".format(result["thickness"] * 1e3))
     print("  peak stress    {:8.4f} MPa".format(result["peak_von_mises_stress"] / 1e6))
@@ -87,13 +84,13 @@ def report():
 
 
 def plot(path="stress_profile.png", clamp_radius=CLAMP_RADIUS):
-    as_built = solver.solve(clamp_radius=clamp_radius)
+    as_built = solver.solve(clamp_radius=clamp_radius, total_force=PEAK_THRUST)
     radii, curves = solver.profile(as_built, r_end=clamp_radius)
     thickness = THICKNESS * math.sqrt(
         solver.field(as_built, clamp_radius, "von_mises") / ALLOWABLE_STRESS
     )
     optimised = solver.solve(
-        thickness=thickness, clamp_radius=clamp_radius, total_force=ULTIMATE_THRUST
+        thickness=thickness, clamp_radius=clamp_radius, total_force=PEAK_THRUST
     )
     figure, axes = plt.subplots(3, 1, figsize=(7.0, 11.0))
     axes[0].plot(radii * 1e3, curves["radial_stress"] / 1e6, label="radial stress")
@@ -101,7 +98,9 @@ def plot(path="stress_profile.png", clamp_radius=CLAMP_RADIUS):
     axes[0].plot(
         radii * 1e3, curves["von_mises"] / 1e6, label="von Mises", linestyle="--"
     )
-    axes[0].axhline(YIELD_STRESS / 1e6, color="red", linestyle=":", label="yield 6082-T6")
+    axes[0].axhline(
+        YIELD_STRESS / 1e6, color="red", linestyle=":", label="yield 6082-T6"
+    )
     axes[0].axvline(
         LOAD_OUTER_RADIUS * 1e3, color="grey", linestyle="-.", label="load band edge"
     )
@@ -130,7 +129,7 @@ def plot(path="stress_profile.png", clamp_radius=CLAMP_RADIUS):
     )
     axes[2].set_xlabel("radius, mm")
     axes[2].set_ylabel("von Mises stress, MPa")
-    axes[2].set_title(f"von Mises at the {ULTIMATE_THRUST:.0f} N ultimate load")
+    axes[2].set_title(f"von Mises at the {PEAK_THRUST:.0f} N peak load")
     axes[2].grid(True, alpha=0.3)
     axes[2].legend(fontsize=8)
     figure.tight_layout()
