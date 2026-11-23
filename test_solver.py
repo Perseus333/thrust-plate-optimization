@@ -12,6 +12,33 @@ def test_geometry_order():
     assert solver.FREE_OUTER_RADIUS < solver.PLATE_OUTER_RADIUS
 
 
+def test_clamp_radius_is_middle_of_the_clamped_band():
+    assert solver.CLAMP_RADIUS == pytest.approx(
+        0.5 * (solver.FREE_OUTER_RADIUS + solver.PLATE_OUTER_RADIUS)
+    )
+
+
+def test_clamp_radius_lies_inside_the_clamped_band():
+    assert solver.FREE_OUTER_RADIUS < solver.CLAMP_RADIUS < solver.PLATE_OUTER_RADIUS
+
+
+def test_default_solves_use_the_single_clamp_radius():
+    default = solver.solve_layout(solver.PEAK_THRUST)
+    explicit = solver.solve_layout(solver.PEAK_THRUST, solver.CLAMP_RADIUS)
+    assert default.deflection(solver.BORE_RADIUS) == pytest.approx(
+        explicit.deflection(solver.BORE_RADIUS)
+    )
+
+
+def test_clamp_at_middle_radius_brackets_the_rigid_limits():
+    middle = solver.solve_layout(solver.PEAK_THRUST, solver.CLAMP_RADIUS)
+    band_start = solver.solve_layout(solver.PEAK_THRUST, solver.FREE_OUTER_RADIUS)
+    outer_rim = solver.solve_layout(solver.PEAK_THRUST, solver.PLATE_OUTER_RADIUS)
+    middle_stress = middle.von_mises_stress(solver.CLAMP_RADIUS)
+    assert band_start.von_mises_stress(solver.FREE_OUTER_RADIUS) < middle_stress
+    assert middle_stress < outer_rim.von_mises_stress(solver.PLATE_OUTER_RADIUS)
+
+
 def test_plate_inner_radius_matches_bore():
     assert solver.PLATE_INNER_RADIUS == pytest.approx(solver.BORE_RADIUS)
 

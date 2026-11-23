@@ -13,6 +13,7 @@ LOAD_OUTER_RADIUS = 0.036
 FREE_OUTER_RADIUS = 0.043
 PLATE_OUTER_RADIUS = 0.055
 PLATE_INNER_RADIUS = 0.029
+CLAMP_RADIUS = 0.5 * (FREE_OUTER_RADIUS + PLATE_OUTER_RADIUS)
 
 THICKNESS = 0.006
 OUTER_DIAMETER = 0.110
@@ -318,7 +319,7 @@ def solve(loads, inner_edge, outer_edge, thickness=None):
     return PlateSolution(regions, coefficients, rigidity, POISSON_RATIO, thickness)
 
 
-def solve_layout(total_force, clamp_radius, thickness=None):
+def solve_layout(total_force, clamp_radius=CLAMP_RADIUS, thickness=None):
     inner = Edge(BORE_RADIUS, "free")
     outer = Edge(clamp_radius, "clamped")
     return solve(load_bands(total_force), inner, outer, thickness=thickness)
@@ -359,7 +360,7 @@ def required_thickness(
 
 
 def optimise_for_safety_factor(
-    total_force=ULTIMATE_THRUST, clamp_radius=FREE_OUTER_RADIUS
+    total_force=ULTIMATE_THRUST, clamp_radius=CLAMP_RADIUS
 ):
     reference = solve_layout(total_force, clamp_radius, thickness=THICKNESS)
     reference_stress = summary(reference, BORE_RADIUS, clamp_radius)[
@@ -376,7 +377,7 @@ def optimise_for_safety_factor(
     return result
 
 
-def print_summary(clamp_radius=FREE_OUTER_RADIUS):
+def print_summary(clamp_radius=CLAMP_RADIUS):
     print("Annular thrust plate, Al 6082-T6")
     print(
         f"Bore {BORE_RADIUS * 1e3:.0f} mm, load band {LOAD_INNER_RADIUS * 1e3:.0f}-{LOAD_OUTER_RADIUS * 1e3:.0f} mm, clamped {clamp_radius * 1e3:.0f}-{PLATE_OUTER_RADIUS * 1e3:.0f} mm"
@@ -411,7 +412,7 @@ def print_summary(clamp_radius=FREE_OUTER_RADIUS):
     print("  mass saving    {:8.4f} %".format(result["mass_saving_fraction"] * 100.0))
 
 
-def plot(clamp_radius=FREE_OUTER_RADIUS, path="stress_profile.png"):
+def plot(clamp_radius=CLAMP_RADIUS, path="stress_profile.png"):
     solution = solve_layout(PEAK_THRUST, clamp_radius)
     radii, radial_stress, hoop_stress, von_mises, deflection = sample(
         solution, BORE_RADIUS, clamp_radius
