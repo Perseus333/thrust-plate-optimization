@@ -83,7 +83,7 @@ def report():
     print("  mass saving    {:8.4f} %".format(result["mass_saving_fraction"] * 100.0))
 
 
-def plot(path="stress_profile.png", clamp_radius=CLAMP_RADIUS):
+def plot(path="results.png", clamp_radius=CLAMP_RADIUS):
     as_built = solver.solve(clamp_radius=clamp_radius, total_force=PEAK_THRUST)
     radii, curves = solver.profile(as_built, r_end=clamp_radius)
     thickness = THICKNESS * math.sqrt(
